@@ -13,13 +13,13 @@
 #define VIBE2_PIN 5
 
 DHT dht(DHTPIN, DHTTYPE);
-SoftwareSerial BTSerial(10, 11);  // D10=RX, D11=TX
+SoftwareSerial BTSerial(10, 11);
 MPU6050 mpu1(0x68);  // ADO → GND
 MPU6050 mpu2(0x69);  // ADO → VCC
 
 String inputCommand = "";
-unsigned long lastSendTime = 0;
-const unsigned long sendInterval = 10UL * 60UL * 1000UL;  // 10분 = 600,000ms
+unsigned long lastEnvSend = 0;
+const unsigned long ENV_INTERVAL = 10UL * 60UL * 1000UL;  // 10분
 
 void setup() {
   Serial.begin(9600);
@@ -37,7 +37,9 @@ void setup() {
 }
 
 void loop() {
-  // 블루투스 명령 수신 (실시간)
+  unsigned long now = millis();
+
+  // 블루투스 명령 수신
   while (BTSerial.available()) {
     char c = BTSerial.read();
     if (c == '\n') {
@@ -49,11 +51,46 @@ void loop() {
     }
   }
 
-  // JSON 데이터 전송 타이머
-  if (millis() - lastSendTime >= sendInterval) {
-    sendJson();
-    lastSendTime = millis();
+  // 센서 읽기
+  int sound = analogRead(SOUND_PIN);
+  int pressure = analogRead(PRESSURE_PIN);
+  int motion = digitalRead(PIR_PIN);
+
+  int16_t ax1, ay1, az1, ax2, ay2, az2;
+  mpu1.getAcceleration(&ax1, &ay1, &az1);
+  mpu2.getAcceleration(&ax2, &ay2, &az2);
+
+  // 실시간 JSON 전송
+  String liveJson = "{";
+  liveJson += "\"sound\":" + String(sound) + ",";
+  liveJson += "\"pressure\":" + String(pressure) + ",";
+  liveJson += "\"motion\":" + String(motion) + ",";
+  liveJson += "\"acc1\":{\"x\":" + String(ax1) + ",\"y\":" + String(ay1) + ",\"z\":" + String(az1) + "},";
+  liveJson += "\"acc2\":{\"x\":" + String(ax2) + ",\"y\":" + String(ay2) + ",\"z\":" + String(az2) + "}";
+  liveJson += "}";
+
+  Serial.println(liveJson);
+  BTSerial.println(liveJson);
+
+  // 환경 데이터는 10분마다 전송
+  if (now - lastEnvSend >= ENV_INTERVAL) {
+    float temp = dht.readTemperature();
+    float humid = dht.readHumidity();
+    int cds = analogRead(CDS_PIN);
+
+    String envJson = "{";
+    envJson += "\"temp\":" + String(temp, 1) + ",";
+    envJson += "\"humid\":" + String(humid, 1) + ",";
+    envJson += "\"cds\":" + String(cds);
+    envJson += "}";
+
+    Serial.println(envJson);
+    BTSerial.println(envJson);
+
+    lastEnvSend = now;
   }
+
+  delay(2000);  // 실시간 데이터 주기
 }
 
 void handleCommand(String command) {
@@ -74,31 +111,4 @@ void handleCommand(String command) {
     delay(1000);
     digitalWrite(VIBE2_PIN, LOW);
   }
-}
-
-void sendJson() {
-  float temp = dht.readTemperature();
-  float humid = dht.readHumidity();
-  int cds = analogRead(CDS_PIN);
-  int sound = analogRead(SOUND_PIN);
-  int pressure = analogRead(PRESSURE_PIN);
-  int motion = digitalRead(PIR_PIN);
-
-  int16_t ax1, ay1, az1, ax2, ay2, az2;
-  mpu1.getAcceleration(&ax1, &ay1, &az1);
-  mpu2.getAcceleration(&ax2, &ay2, &az2);
-
-  String json = "{";
-  json += "\"temp\":" + String(temp, 1) + ",";
-  json += "\"humid\":" + String(humid, 1) + ",";
-  json += "\"cds\":" + String(cds) + ",";
-  json += "\"sound\":" + String(sound) + ",";
-  json += "\"pressure\":" + String(pressure) + ",";
-  json += "\"motion\":" + String(motion) + ",";
-  json += "\"acc1\":{\"x\":" + String(ax1) + ",\"y\":" + String(ay1) + ",\"z\":" + String(az1) + "},";
-  json += "\"acc2\":{\"x\":" + String(ax2) + ",\"y\":" + String(ay2) + ",\"z\":" + String(az2) + "}";
-  json += "}";
-
-  Serial.println(json);
-  BTSerial.println(json);
 }
