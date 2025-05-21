@@ -1,0 +1,20 @@
+# Arduino 빌드 캐시
+*.hex
+*.elf
+*.bin
+*.eep
+
+# macOS 관련
+.DS_Store
+
+# Windows 관련
+Thumbs.db
+
+# Arduino CLI 캐시
+.build/
+
+# VS Code 사용 시
+.vscode/
+
+# PlatformIO (사용 중이라면)
+.pio/
