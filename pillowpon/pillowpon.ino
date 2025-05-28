@@ -64,7 +64,8 @@ void loop() {
                   ",\"sound\":" + String(sound) +
                   ",\"body_detection\":" + String(motion) + 
                   ",\"pressure\":" + String(pressure, 2) +
-                  ",\"accelerator\":" + String(accelerator, 2) +
+                  ",\"accelerator1\":" + String(accelerator, 2) +
+                  ",\"accelerator2\":" + String(accelerator, 2) +
                   ",\"timestamp\":\"" + timestamp+"\"}\n";
     bluetooth.println(json);
   } else {
