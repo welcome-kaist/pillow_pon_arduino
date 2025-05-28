@@ -51,13 +51,21 @@ void loop() {
   int cds = analogRead(CDS_PIN);
   int sound = analogRead(SOUND_ANALOG_PIN);
   int motion = digitalRead(PIR_PIN);  // 0 or 1
+  double pressure = 512.0;         // Flex sensor
+  double accelerator = 1.23;       // MPU6050
+
+  unsigned long seconds = millis() / 1000;
+  String timestamp = String(seconds) + "s";
 
   if (!isnan(temp) && !isnan(humid)) {
-    String json = "{\"temp\":" + String(temp, 1) +
-                  ",\"humid\":" + String(humid, 1) +
-                  ",\"cds\":" + String(cds) +
+    String json = "{\"temperature\":" + String(temp, 1) +
+                  ",\"humidity\":" + String(humid, 1) +
+                  ",\"photoresistor\":" + String(cds) +
                   ",\"sound\":" + String(sound) +
-                  ",\"motion\":" + String(motion) + "}";
+                  ",\"body_detection\":" + String(motion) + 
+                  ",\"pressure\":" + String(pressure, 2) +
+                  ",\"accelerator\":" + String(accelerator, 2) +
+                  ",\"timestamp\":\"" + timestamp+"\"}\n";
     bluetooth.println(json);
   } else {
     bluetooth.println("{\"error\":\"DHT read failed\"}");
