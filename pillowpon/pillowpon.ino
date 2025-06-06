@@ -1,5 +1,6 @@
 #include <DHT.h>
 #include <SoftwareSerial.h>
+#include <MPU6050.h>
 
 // DHT11
 #define DHTPIN 2
@@ -20,17 +21,25 @@ SoftwareSerial bluetooth(BT_RXD, BT_TXD);
 #define VIB1_PIN 5
 #define VIB2_PIN 6
 
+MPU6050 mpu;
+#define FLEX_PIN A2
+
 String command = "";  // Bluetooth 명령 수신 버퍼
 
 void setup() {
   bluetooth.begin(9600);
   dht.begin();
+  mpu.initialize();
+  if (!mpu.testConnection()) {
+    bluetooth.println("{\"error\":\"MPU6050 connection failed\"}");
+  }
 
   pinMode(VIB1_PIN, OUTPUT);
   pinMode(VIB2_PIN, OUTPUT);
   pinMode(PIR_PIN, INPUT);
   digitalWrite(VIB1_PIN, LOW);
   digitalWrite(VIB2_PIN, LOW);
+  pinMode(FLEX_PIN, INPUT);
 }
 
 void loop() {
@@ -52,7 +61,23 @@ void loop() {
   int sound = analogRead(SOUND_ANALOG_PIN);
   int motion = digitalRead(PIR_PIN);  // 0 or 1
   double pressure = 512.0;         // Flex sensor
+  int16_t ax, ay, az;
+  mpu.getAcceleration(&ax, &ay, &az);
   double accelerator = 1.23;       // MPU6050
+  int pressureRaw = analogRead(A2);
+
+  
+  // ±4g 기준으로 정규화 (원래는 ±2g, 그래서 ×2)
+  float accelX = (ax / 16384.0) * 4.0;
+  float accelY = (ay / 16384.0) * 4.0;
+  float accelZ = (az / 16384.0) * 4.0;
+
+  
+  // magnitude 계산
+  float accelMag = sqrt(accelX * accelX + accelY * accelY + accelZ * accelZ);
+  
+  // 0~4 범위로 정규화 (최댓값 6.9 기준)
+  float normAccelMag = min((accelMag / 6.9) * 4.0, 4.0);  // 혹시 몰라서 max 제한
 
   unsigned long seconds = millis() / 1000;
   String timestamp = String(seconds) + "s";
@@ -63,9 +88,8 @@ void loop() {
                   ",\"photoresistor\":" + String(cds) +
                   ",\"sound\":" + String(sound) +
                   ",\"body_detection\":" + String(motion) + 
-                  ",\"pressure\":" + String(pressure, 2) +
-                  ",\"accelerator1\":" + String(accelerator, 2) +
-                  ",\"accelerator2\":" + String(accelerator, 2) +
+                  ",\"pressure\":" + String(pressureRaw) +
+                  ",\"accelerator\":" + String(normAccelMag, 2) +
                   ",\"timestamp\":\"" + timestamp+"\"}\n";
     bluetooth.println(json);
   } else {
