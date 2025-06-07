@@ -60,10 +60,8 @@ void loop() {
   int cds = analogRead(CDS_PIN);
   int sound = analogRead(SOUND_ANALOG_PIN);
   int motion = digitalRead(PIR_PIN);  // 0 or 1
-  double pressure = 512.0;         // Flex sensor
   int16_t ax, ay, az;
   mpu.getAcceleration(&ax, &ay, &az);
-  double accelerator = 1.23;       // MPU6050
   int pressureRaw = analogRead(A2);
 
   
