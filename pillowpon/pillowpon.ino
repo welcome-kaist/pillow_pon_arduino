@@ -82,7 +82,28 @@ void loop() {
   unsigned long seconds = millis() / 1000;
   String timestamp = String(seconds) + "s";
 
-  if (!isnan(temp) && !isnan(humid)) {
+  // [EXCEPTION HANDLING ADDED]
+  bool valid = true;
+  String reason = "";
+
+  if (cds <= 0 || cds >= 1023) {
+    valid = false;
+    reason += "\"cds\":\"out_of_range\",";
+  }
+  if (sound <= 0 || sound >= 1023) {
+    valid = false;
+    reason += "\"sound\":\"out_of_range\",";
+  }
+  if (pressureRaw < 0 || pressureRaw > 1023) {  // 예시: 100~1000만 유효 범위
+    valid = false;
+    reason += "\"pressure\":\"abnormal\",";
+  }
+  if (normAccelMag < 0 || normAccelMag > 4.0) {
+    valid = false;
+    reason += "\"accel\":\"invalid_magnitude\",";
+  }
+
+  if (!isnan(temp) && !isnan(humid) && valid) {
     String json = "{\"temperature\":" + String(temp, 1) +
                   ",\"humidity\":" + String(humid, 1) +
                   ",\"photoresistor\":" + String(cds) +
@@ -93,7 +114,17 @@ void loop() {
                   ",\"timestamp\":\"" + timestamp+"\"}\n";
     bluetooth.println(json);
   } else {
-    bluetooth.println("{\"error\":\"DHT read failed\"}");
+    // [EXCEPTION HANDLING ADDED]
+    String errorJson = "{\"error\":\"Sensor read failure or out-of-range\",";
+    if (isnan(temp) || isnan(humid)) {
+      errorJson += "\"dht\":\"fail\",";
+    }
+    if (reason.length() > 0) {
+      reason.remove(reason.length() - 1);
+      errorJson += reason;
+    }
+    errorJson += "}";
+    bluetooth.println(errorJson);
   }
 
   delay(2000);
