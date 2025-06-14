@@ -60,45 +60,41 @@ void loop() {
   int cds = analogRead(CDS_PIN);
   int sound = analogRead(SOUND_ANALOG_PIN);
   int motion = digitalRead(PIR_PIN);  // 0 or 1
-  double pressure = 512.0;         // Flex sensor
   int16_t ax, ay, az;
   mpu.getAcceleration(&ax, &ay, &az);
-  double accelerator = 1.23;       // MPU6050
   int pressureRaw = analogRead(A2);
 
   
   // ±4g 기준으로 정규화 (원래는 ±2g, 그래서 ×2)
-  float accelX = (ax / 16384.0) * 4.0;
-  float accelY = (ay / 16384.0) * 4.0;
-  float accelZ = (az / 16384.0) * 4.0;
+  float accelX = (ax / 16384.0) * 10.0;
+  float accelY = (ay / 16384.0) * 10.0;
+  float accelZ = (az / 16384.0) * 10.0;
 
   
   // magnitude 계산
   float accelMag = sqrt(accelX * accelX + accelY * accelY + accelZ * accelZ);
   
   // 0~4 범위로 정규화 (최댓값 6.9 기준)
-  float normAccelMag = min((accelMag / 6.9) * 4.0, 4.0);  // 혹시 몰라서 max 제한
+  float normAccelMag = min((accelMag / 6.9) * 20.0, 20.0);  // 혹시 몰라서 max 제한
 
   unsigned long seconds = millis() / 1000;
   String timestamp = String(seconds) + "s";
-
-  // [EXCEPTION HANDLING ADDED]
+  
   bool valid = true;
   String reason = "";
-
-  if (cds <= 0 || cds >= 1023) {
+  if (cds == 0 || cds == 1023) {
     valid = false;
     reason += "\"cds\":\"out_of_range\",";
   }
-  if (sound <= 0 || sound >= 1023) {
+  if (sound == 0 || sound == 1023) {
     valid = false;
     reason += "\"sound\":\"out_of_range\",";
   }
-  if (pressureRaw < 0 || pressureRaw > 1023) {  // 예시: 100~1000만 유효 범위
+  if (pressureRaw <= 0 || pressureRaw >= 1023) {  // 예시: 100~1000만 유효 범위
     valid = false;
     reason += "\"pressure\":\"abnormal\",";
   }
-  if (normAccelMag < 0 || normAccelMag > 4.0) {
+  if (normAccelMag < 0 || normAccelMag > 20.0) {
     valid = false;
     reason += "\"accel\":\"invalid_magnitude\",";
   }
@@ -111,7 +107,7 @@ void loop() {
                   ",\"body_detection\":" + String(motion) + 
                   ",\"pressure\":" + String(pressureRaw) +
                   ",\"accelerator\":" + String(normAccelMag, 2) +
-                  ",\"timestamp\":\"" + timestamp+"\"}\n";
+                  ",\"timestamp\":\"" + timestamp + "\"}\n";
     bluetooth.println(json);
   } else {
     // [EXCEPTION HANDLING ADDED]
@@ -122,7 +118,7 @@ void loop() {
     if (reason.length() > 0) {
       reason.remove(reason.length() - 1);
       errorJson += reason;
-    }
+    } 
     errorJson += "}";
     bluetooth.println(errorJson);
   }
