@@ -27,6 +27,7 @@ MPU6050 mpu;
 String command = "";  // Bluetooth 명령 수신 버퍼
 
 void setup() {
+  Serial.begin(9600);  
   bluetooth.begin(9600);
   dht.begin();
   mpu.initialize();
@@ -46,10 +47,13 @@ void loop() {
   // 명령 수신 처리
   while (bluetooth.available()) {
     char c = bluetooth.read();
+    
     if (c == '\n') {
+      Serial.println(command);
       processCommand(command);
       command = "";
     } else {
+      Serial.println(command);
       command += c;
     }
   }
@@ -75,7 +79,7 @@ void loop() {
   float accelMag = sqrt(accelX * accelX + accelY * accelY + accelZ * accelZ);
   
   // 0~4 범위로 정규화 (최댓값 6.9 기준)
-  float normAccelMag = min((accelMag / 6.9) * 20.0, 20.0);  // 혹시 몰라서 max 제한
+  float normAccelMag = min((accelMag / 30) * 20.0, 20.0);  // 혹시 몰라서 max 제한
 
   unsigned long seconds = millis() / 1000;
   String timestamp = String(seconds) + "s";
@@ -128,28 +132,32 @@ void loop() {
 
 void processCommand(String cmd) {
   cmd.trim();
-
+  Serial.println(cmd);
   if (cmd == "VIBRATE:ALL") {
     digitalWrite(VIB1_PIN, HIGH);
     digitalWrite(VIB2_PIN, HIGH);
     delay(1000);
     digitalWrite(VIB1_PIN, LOW);
     digitalWrite(VIB2_PIN, LOW);
-    bluetooth.println("{\"status\":\"ALL vibrated\"}");
+    // bluetooth.println("{\"status\":\"ALL vibrated\"}");
+    Serial.println("{\"status\":\"ALL vibrated\"}");
   }
   else if (cmd == "VIBRATE:SPOT1") {
     digitalWrite(VIB1_PIN, HIGH);
     delay(1000);
     digitalWrite(VIB1_PIN, LOW);
-    bluetooth.println("{\"status\":\"SPOT1 vibrated\"}");
+    // bluetooth.println("{\"status\":\"SPOT1 vibrated\"}");
+    Serial.println("{\"status\":\"spot1 vibrated\"}");
   }
   else if (cmd == "VIBRATE:SPOT2") {
     digitalWrite(VIB2_PIN, HIGH);
     delay(1000);
     digitalWrite(VIB2_PIN, LOW);
-    bluetooth.println("{\"status\":\"SPOT2 vibrated\"}");
+    // bluetooth.println("{\"status\":\"SPOT2 vibrated\"}");
+    Serial.println("{\"status\":\"spot2 vibrated\"}");
   }
   else {
-    bluetooth.println("{\"error\":\"Unknown command\"}");
+    // bluetooth.println("{\"error\":\"Unknown command\"}");
+    Serial.println("{\"status\":\"unknowncommand\"}");
   }
 }
